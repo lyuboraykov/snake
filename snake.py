@@ -3,6 +3,8 @@ import time
 from collections import deque
 import os
 import termios, fcntl
+import random
+import console
 
 def get_keyboard_input():
 	fd = sys.stdin.fileno()
@@ -58,13 +60,23 @@ class SnakeElement:
 		self.x = x
 		self.y = y
 
-def draw_world(snake, obstacles):
+def draw_world(snake, food):
 	for el in snake:
 		print_in_location(el.x, 
 				el.y, el.elementSymbol)
-	for x in obstacles:
-		pass
+	print_in_location(food.x, food.y, food.elementSymbol)
 
+def has_crashed_itself(snake):
+	for el in range(1, len(snake)):
+		if snake[el].x == snake[0].x and snake[el].y == snake[0].y:
+			return True
+	return False
+
+def lose():
+	clear_world();
+	print ("DAMN YOU LOST")
+
+#commmand line speed argument
 if len(sys.argv) > 1:
 	speed = sys.argv[1]
 else:
@@ -74,26 +86,49 @@ time_sleep = 1 / (float(speed) * 10)
 snake = deque()
 
 #initialize the snake
-for x in range(0,5):
+for x in range(0, 10):
 	snake.append(SnakeElement(10 - x, 10))
 
 direction = 'right'
+terminal_size = console.get_terminal_size()
+terminal_width = terminal_size[0]
+terminal_height = terminal_size[1]
+
+#instance first obstacle
+food = SnakeElement (random.randint(0, terminal_width),
+ 			random.randint(0, terminal_height))
 
 #gameloop
 while 1 == 1:
-	move_snake(direction, snake)
-	clear_world()
-	draw_world(snake, [])
-	
 	pressed_key = get_keyboard_input()
 	if pressed_key:
-		if pressed_key[1] == "A":
+		if pressed_key[1] == "A" and direction != 'down':
 			direction='up'
-		if pressed_key[1] == "D":
+		if pressed_key[1] == "D" and direction != 'right':
 			direction='left'
-		if pressed_key[1] == "C":
+		if pressed_key[1] == "C" and direction != 'left':
 			direction='right'
-		if pressed_key[1] == "B":
+		if pressed_key[1] == "B" and direction != 'up':
 			direction='down'
-		
+
+	move_snake(direction, snake)
+	#left or right walls
+	if snake[0].x < 0 or snake[0].x > terminal_width:
+		lose()
+		break
+	#up or down walls
+	elif snake[0].y < 0 or snake[0].y > terminal_height:
+		lose()
+		break
+	elif has_crashed_itself(snake):
+		lose()
+		break
+	if snake[0].x == food.x and snake[0].y == food.y:
+		snake.append(SnakeElement(food.x, food.y))
+		food.x = random.randint(0, terminal_width)
+		food.y = random.randint(0, terminal_height)
+
+	clear_world()
+	draw_world(snake, food)
+	
 	time.sleep(time_sleep)
